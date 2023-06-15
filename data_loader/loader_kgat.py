@@ -28,6 +28,19 @@ class DataLoaderKGAT(DataLoaderBase):
 
 
     def construct_data(self, kg_data):
+        '''
+            1. kg_data preparation: Adding inverse kg_data to kg_data
+            2. Remapping user id to make user ids unique
+            3. KG_Interaction data : Adding Interaction data in train and test split to KG data
+            4. Making KG_DICT : from KG_Interaction data
+                a. h -> [(t, r)]
+                b. r -> [(h, t)]
+                c. Ordered h, r, t tensors: from KG_Interaction data rows
+                    i. h tensor
+                    ii. r tensor
+                    iii. t tensor
+        '''
+
         # add inverse kg data
         n_relations = max(kg_data['r']) + 1
         inverse_kg_data = kg_data.copy()
@@ -92,10 +105,29 @@ class DataLoaderKGAT(DataLoaderBase):
 
 
     def create_adjacency_dict(self):
+        '''
+            Making adjacency matrices for all relations with the heads and tails as vertical and horizontal axes
+            Adjacency matrix of r1:
+                    t1  t2  t3  ....
+                h1  1
+                h2      1
+                h3          1
+                .               .
+                .                   .
+
+                In the form of
+                (h1, t1) 1
+                (h2, t2) 1
+                (h3, t3) 1
+                .
+                .
+                .
+        '''
         self.adjacency_dict = {}
         for r, ht_list in self.train_relation_dict.items():
-            rows = [e[0] for e in ht_list]
-            cols = [e[1] for e in ht_list]
+            ''' r, [(h, t)] '''
+            rows = [e[0] for e in ht_list]  # h list
+            cols = [e[1] for e in ht_list]  # t list
             vals = [1] * len(rows)
             adj = sp.coo_matrix((vals, (rows, cols)), shape=(self.n_users_entities, self.n_users_entities))
             self.adjacency_dict[r] = adj

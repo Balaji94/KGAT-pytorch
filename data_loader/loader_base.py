@@ -17,9 +17,10 @@ class DataLoaderBase(object):
         self.pretrain_embedding_dir = args.pretrain_embedding_dir
 
         self.data_dir = os.path.join(args.data_dir, args.data_name)
+
         self.train_file = os.path.join(self.data_dir, 'train.txt')
         self.test_file = os.path.join(self.data_dir, 'test.txt')
-        self.kg_file = os.path.join(self.data_dir, "kg_final.txt")
+        self.kg_file = os.path.join(self.data_dir, 'kg_final.txt')
 
         self.cf_train_data, self.train_user_dict = self.load_cf(self.train_file)
         self.cf_test_data, self.test_user_dict = self.load_cf(self.test_file)
@@ -30,19 +31,21 @@ class DataLoaderBase(object):
 
 
     def load_cf(self, filename):
-        user = []
-        item = []
+        user = list()
+        item = list()
         user_dict = dict()
 
         lines = open(filename, 'r').readlines()
-        for l in lines:
-            tmp = l.strip()
-            inter = [int(i) for i in tmp.split()]
-
+        for line in lines:
+            '''
+                line format:
+                    <user 1> <item 1> <item 2> ... <item n>
+            '''
+            inter = [int(i) for i in line.strip().split()]
             if len(inter) > 1:
+                ''' user 1, [item 1, item 2,... item n] '''
                 user_id, item_ids = inter[0], inter[1:]
                 item_ids = list(set(item_ids))
-
                 for item_id in item_ids:
                     user.append(user_id)
                     item.append(item_id)
@@ -54,8 +57,12 @@ class DataLoaderBase(object):
 
 
     def statistic_cf(self):
-        self.n_users = max(max(self.cf_train_data[0]), max(self.cf_test_data[0])) + 1
-        self.n_items = max(max(self.cf_train_data[1]), max(self.cf_test_data[1])) + 1
+        def get_len(train, test):
+            return len(set(train + test))
+        # self.n_users = max(max(self.cf_train_data[0]), max(self.cf_test_data[0])) + 1
+        # self.n_items = max(max(self.cf_train_data[1]), max(self.cf_test_data[1])) + 1
+        self.n_users = get_len(self.cf_train_data[0], self.cf_test_data[0])
+        self.n_items = get_len(self.cf_train_data[1], self.cf_test_data[1])
         self.n_cf_train = len(self.cf_train_data[0])
         self.n_cf_test = len(self.cf_test_data[0])
 
