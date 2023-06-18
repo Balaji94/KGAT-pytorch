@@ -32,7 +32,6 @@ class DataLoaderKGAT(DataLoaderBase):
         self.create_laplacian_dict()
 
     def __kg_statictics(self, kg_data):
-
         self.n_relations = len(np.unique(kg_data['r']))
         self.n_entities = len(np.unique(kg_data['h'])) + len(np.unique(kg_data['t']))
         self.n_users_entities = self.n_users + self.n_entities
@@ -131,8 +130,13 @@ class DataLoaderKGAT(DataLoaderBase):
             ''' r, [(h, t)] '''
             rows = [e[0] for e in ht_list]  # h list
             cols = [e[1] for e in ht_list]  # t list
-            vals = [1] * len(rows)  # len(rows or cols)
-            adj = sp.coo_matrix((vals, (rows, cols)), shape=(self.n_users_entities, self.n_users_entities))
+
+
+            unique_rows = np.unique(rows)
+            unique_cols = np.unique(cols)
+            vals = [1] * len(unique_rows)  # len(unique_rows or unique_cols)
+
+            adj = sp.coo_matrix((vals, (unique_rows, unique_cols)), shape=(self.n_users_entities, self.n_users_entities))
             self.adjacency_dict[r] = adj
 
 
