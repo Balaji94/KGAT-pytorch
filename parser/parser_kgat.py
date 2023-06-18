@@ -62,6 +62,9 @@ def parse_kgat_args():
     parser.add_argument('--Ks', nargs='?', default='[20, 40, 60, 80, 100]',
                         help='Calculate metric@K when evaluating.')
 
+    parser.add_argument('--is_training', default='1',
+                        help='Is Training?.')
+
     args = parser.parse_args()
 
     save_dir = 'trained_model/KGAT/{}/embed-dim{}_relation-dim{}_{}_{}_{}_lr{}_pretrain{}/'.format(

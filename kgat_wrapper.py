@@ -186,7 +186,7 @@ class KGAT_wrapper:
         test_user_dict = dataloader.test_user_dict
 
         model.eval()
-
+        # M
         user_ids = list(test_user_dict.keys())
         user_ids_batches = [user_ids[i: i + test_batch_size] for i in range(0, len(user_ids), test_batch_size)]
         user_ids_batches = [torch.LongTensor(d) for d in user_ids_batches]

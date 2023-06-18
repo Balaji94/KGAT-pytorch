@@ -20,7 +20,7 @@ class DataLoaderBase(object):
 
         self.train_file = os.path.join(self.data_dir, 'train.txt')
         self.test_file = os.path.join(self.data_dir, 'test.txt')
-        self.kg_file = os.path.join(self.data_dir, 'kg_final.txt')
+        self.kg_file = os.path.join(self.data_dir, 'kg.csv')
 
         self.cf_train_data, self.train_user_dict = self.load_cf(self.train_file)
         self.cf_test_data, self.test_user_dict = self.load_cf(self.test_file)
@@ -37,7 +37,7 @@ class DataLoaderBase(object):
 
         lines = open(filename, 'r').readlines()
         for line in lines:
-            '''
+            '''  
                 line format:
                     <user 1> <item 1> <item 2> ... <item n>
             '''
@@ -58,7 +58,8 @@ class DataLoaderBase(object):
 
     def statistic_cf(self):
         def get_len(train, test):
-            return len(set(train + test))
+            total = list(np.unique(train)) + list(np.unique(test))
+            return len(total)
         # self.n_users = max(max(self.cf_train_data[0]), max(self.cf_test_data[0])) + 1
         # self.n_items = max(max(self.cf_train_data[1]), max(self.cf_test_data[1])) + 1
         self.n_users = get_len(self.cf_train_data[0], self.cf_test_data[0])
@@ -68,7 +69,7 @@ class DataLoaderBase(object):
 
 
     def load_kg(self, filename):
-        kg_data = pd.read_csv(filename, sep=' ', names=['h', 'r', 't'], engine='python')
+        kg_data = pd.read_csv(filename, sep=',', names=['h', 'r', 't'], engine='python', skiprows=1)
         kg_data = kg_data.drop_duplicates()
         return kg_data
 

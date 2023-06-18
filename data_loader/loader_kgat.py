@@ -13,21 +13,31 @@ from data_loader.loader_base import DataLoaderBase
 class DataLoaderKGAT(DataLoaderBase):
 
     def __init__(self, args, logging):
+        # CF data are obtained here
         super().__init__(args, logging)
         self.cf_batch_size = args.cf_batch_size
         self.kg_batch_size = args.kg_batch_size
         self.test_batch_size = args.test_batch_size
 
+        # getting Knowledge Graph data
         kg_data = self.load_kg(self.kg_file)
-        self.construct_data(kg_data)
+        self.__kg_statictics(kg_data)
+
+        # constructing CKG data
+        self.__construct_data(kg_data)
         self.print_info(logging)
 
         self.laplacian_type = args.laplacian_type
         self.create_adjacency_dict()
         self.create_laplacian_dict()
 
+    def __kg_statictics(self, kg_data):
 
-    def construct_data(self, kg_data):
+        self.n_relations = len(np.unique(kg_data['r']))
+        self.n_entities = len(np.unique(kg_data['h'])) + len(np.unique(kg_data['t']))
+        self.n_users_entities = self.n_users + self.n_entities
+
+    def __construct_data(self, kg_data):
         '''
             1. kg_data preparation: Adding inverse kg_data to kg_data
             2. Remapping user id to make user ids unique
@@ -41,54 +51,47 @@ class DataLoaderKGAT(DataLoaderBase):
                     iii. t tensor
         '''
 
-        # add inverse kg data
-        n_relations = max(kg_data['r']) + 1
-        inverse_kg_data = kg_data.copy()
-        inverse_kg_data = inverse_kg_data.rename({'h': 't', 't': 'h'}, axis='columns')
-        inverse_kg_data['r'] += n_relations
-        kg_data = pd.concat([kg_data, inverse_kg_data], axis=0, ignore_index=True, sort=False)
+        # cf_train and cf_test tuples
+        self.cf_train_data = (
+            self.cf_train_data[0].astype(np.int32),
+            self.cf_train_data[1].astype(np.int32)
+        )
+        self.cf_test_data = (
+            self.cf_test_data[0].astype(np.int32),
+            self.cf_test_data[1].astype(np.int32)
+        )
 
-        # re-map user id
-        kg_data['r'] += 2
-        self.n_relations = max(kg_data['r']) + 1
-        self.n_entities = max(max(kg_data['h']), max(kg_data['t'])) + 1
-        self.n_users_entities = self.n_users + self.n_entities
+        # Train user and Test user dicts
+        self.train_user_dict = {
+            k: np.unique(v).astype(np.int32)
+            for k, v in self.train_user_dict.items()
+        }
+        self.test_user_dict = {
+            k: np.unique(v).astype(np.int32)
+            for k, v in self.test_user_dict.items()
+        }
 
-        self.cf_train_data = (np.array(list(map(lambda d: d + self.n_entities, self.cf_train_data[0]))).astype(np.int32), self.cf_train_data[1].astype(np.int32))
-        self.cf_test_data = (np.array(list(map(lambda d: d + self.n_entities, self.cf_test_data[0]))).astype(np.int32), self.cf_test_data[1].astype(np.int32))
-
-        self.train_user_dict = {k + self.n_entities: np.unique(v).astype(np.int32) for k, v in self.train_user_dict.items()}
-        self.test_user_dict = {k + self.n_entities: np.unique(v).astype(np.int32) for k, v in self.test_user_dict.items()}
-
-        # add interactions to kg data
+        # creating Bi-partite graph
         cf2kg_train_data = pd.DataFrame(np.zeros((self.n_cf_train, 3), dtype=np.int32), columns=['h', 'r', 't'])
         cf2kg_train_data['h'] = self.cf_train_data[0]
         cf2kg_train_data['t'] = self.cf_train_data[1]
+        cf2kg_train_data['r'] = 442043
 
-        inverse_cf2kg_train_data = pd.DataFrame(np.ones((self.n_cf_train, 3), dtype=np.int32), columns=['h', 'r', 't'])
-        inverse_cf2kg_train_data['h'] = self.cf_train_data[1]
-        inverse_cf2kg_train_data['t'] = self.cf_train_data[0]
-
-        self.kg_train_data = pd.concat([kg_data, cf2kg_train_data, inverse_cf2kg_train_data], ignore_index=True)
+        # creating Collaborative Knowledge Graph (CKG)
+        self.kg_train_data = pd.concat([kg_data, cf2kg_train_data], ignore_index=True)
         self.n_kg_train = len(self.kg_train_data)
 
-        # construct kg dict
-        h_list = []
-        t_list = []
-        r_list = []
-
+        # construct CKG data in required formats
+        h_list = []; t_list = []; r_list = []
         self.train_kg_dict = collections.defaultdict(list)
         self.train_relation_dict = collections.defaultdict(list)
-
         for row in self.kg_train_data.iterrows():
             h, r, t = row[1]
             h_list.append(h)
             t_list.append(t)
             r_list.append(r)
-
             self.train_kg_dict[h].append((t, r))
             self.train_relation_dict[r].append((h, t))
-
         self.h_list = torch.LongTensor(h_list)
         self.t_list = torch.LongTensor(t_list)
         self.r_list = torch.LongTensor(r_list)
@@ -128,7 +131,7 @@ class DataLoaderKGAT(DataLoaderBase):
             ''' r, [(h, t)] '''
             rows = [e[0] for e in ht_list]  # h list
             cols = [e[1] for e in ht_list]  # t list
-            vals = [1] * len(rows)
+            vals = [1] * len(rows)  # len(rows or cols)
             adj = sp.coo_matrix((vals, (rows, cols)), shape=(self.n_users_entities, self.n_users_entities))
             self.adjacency_dict[r] = adj
 
