@@ -117,12 +117,16 @@ def logloss(ground_truth, prediction):
 
 def calc_metrics_at_k(cf_scores, train_user_dict, test_user_dict, user_ids, item_ids, Ks):
     """
+
     cf_scores: (n_users, n_items)
+
     """
     test_pos_item_binary = np.zeros([len(user_ids), len(item_ids)], dtype=np.float32)
+    batch_user_id_mappings = {u : i for i, u in enumerate(user_ids)}
+    batch_item_id_mappings = {e : i for i, e in enumerate(item_ids)}
     for idx, u in enumerate(user_ids):
-        train_pos_item_list = train_user_dict[u]
-        test_pos_item_list = test_user_dict[u]
+        train_pos_item_list = [batch_item_id_mappings[i] for i in train_user_dict[u]] if u in train_user_dict else []
+        test_pos_item_list = [batch_item_id_mappings[i] for i in test_user_dict[u]] if u in test_user_dict else []
         cf_scores[idx][train_pos_item_list] = -np.inf
         test_pos_item_binary[idx][test_pos_item_list] = 1
 

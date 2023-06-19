@@ -44,6 +44,8 @@ class DataLoaderKGAT(DataLoaderBase):
         self.n_users_entities = self.n_users + self.n_entities
 
 
+    def remap_id(self, og_id, is_relation=False):
+        return self.users_entities_ids[og_id] if not is_relation else self.relations_ids[og_id]
 
     def __construct_data(self, kg_data):
         '''
@@ -71,11 +73,11 @@ class DataLoaderKGAT(DataLoaderBase):
 
         # Train user and Test user dicts
         self.train_user_dict = {
-            self.users_entities_ids[k]: np.unique([self.users_entities_ids[e] for e in v]).astype(np.int32)
+            self.remap_id(k): np.unique([self.remap_id(e) for e in v]).astype(np.int32)
             for k, v in self.train_user_dict.items()
         }
         self.test_user_dict = {
-            self.users_entities_ids[k]: np.unique([self.users_entities_ids[e] for e in v]).astype(np.int32)
+            self.remap_id(k): np.unique([self.remap_id(e) for e in v]).astype(np.int32)
             for k, v in self.test_user_dict.items()
         }
 
@@ -98,9 +100,9 @@ class DataLoaderKGAT(DataLoaderBase):
         self.train_relation_dict = collections.defaultdict(list)
         for row in self.kg_train_data.iterrows():
             h, r, t = row[1]
-            h = self.users_entities_ids[h]
-            r = self.relations_ids[r]
-            t = self.users_entities_ids[t]
+            h = self.remap_id(h)
+            r = self.remap_id(r, is_relation=True)
+            t = self.remap_id(t)
 
             h_list.append(h)
             t_list.append(t)

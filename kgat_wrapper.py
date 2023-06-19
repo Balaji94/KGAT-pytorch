@@ -4,6 +4,7 @@ import random
 from time import time
 
 import pandas as pd
+import torch
 from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
@@ -191,8 +192,7 @@ class KGAT_wrapper:
         user_ids_batches = [user_ids[i: i + test_batch_size] for i in range(0, len(user_ids), test_batch_size)]
         user_ids_batches = [torch.LongTensor(d) for d in user_ids_batches]
 
-        n_items = dataloader.n_items
-        item_ids = torch.arange(n_items, dtype=torch.long).to(self.device)
+        item_ids = torch.LongTensor([dataloader.remap_id(id) for id in dataloader.items])
 
         cf_scores = []
         metric_names = ['precision', 'recall', 'ndcg']
