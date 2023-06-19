@@ -59,11 +59,12 @@ class DataLoaderBase(object):
     def statistic_cf(self):
         def get_len(train, test):
             total = list(np.unique(train)) + list(np.unique(test))
-            return len(total)
+            return total, len(total)
         # self.n_users = max(max(self.cf_train_data[0]), max(self.cf_test_data[0])) + 1
         # self.n_items = max(max(self.cf_train_data[1]), max(self.cf_test_data[1])) + 1
-        self.n_users = get_len(self.cf_train_data[0], self.cf_test_data[0])
-        self.n_items = get_len(self.cf_train_data[1], self.cf_test_data[1])
+
+        self.users, self.n_users = get_len(self.cf_train_data[0], self.cf_test_data[0])
+        self.items, self.n_items = get_len(self.cf_train_data[1], self.cf_test_data[1])
         self.n_cf_train = len(self.cf_train_data[0])
         self.n_cf_test = len(self.cf_test_data[0])
 

@@ -32,14 +32,14 @@ class KGAT_wrapper:
         logging.info(args)
 
         # GPU / CPU config
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def __train_cf_batch(self, batch, data, model, cf_optimizer):
         cf_batch_user, cf_batch_pos_item, cf_batch_neg_item = data.generate_cf_batch(data.train_user_dict,
                                                                                      data.cf_batch_size)
-        cf_batch_user = cf_batch_user.to(device)
-        cf_batch_pos_item = cf_batch_pos_item.to(device)
-        cf_batch_neg_item = cf_batch_neg_item.to(device)
+        cf_batch_user = cf_batch_user.to(self.device)
+        cf_batch_pos_item = cf_batch_pos_item.to(self.device)
+        cf_batch_neg_item = cf_batch_neg_item.to(self.device)
 
         cf_batch_loss = model(cf_batch_user, cf_batch_pos_item, cf_batch_neg_item, mode='train_cf')
 
@@ -55,10 +55,10 @@ class KGAT_wrapper:
 
     def __train_kg_batch(self, batch, data, model, kg_optimizer):
         kg_batch_head, kg_batch_relation, kg_batch_pos_tail, kg_batch_neg_tail = data.generate_kg_batch(data.train_kg_dict, data.kg_batch_size, data.n_users_entities)
-        kg_batch_head = kg_batch_head.to(device)
-        kg_batch_relation = kg_batch_relation.to(device)
-        kg_batch_pos_tail = kg_batch_pos_tail.to(device)
-        kg_batch_neg_tail = kg_batch_neg_tail.to(device)
+        kg_batch_head = kg_batch_head.to(self.device)
+        kg_batch_relation = kg_batch_relation.to(self.device)
+        kg_batch_pos_tail = kg_batch_pos_tail.to(self.device)
+        kg_batch_neg_tail = kg_batch_neg_tail.to(self.device)
 
         kg_batch_loss = model(kg_batch_head, kg_batch_relation, kg_batch_pos_tail, kg_batch_neg_tail, mode='train_kg')
 
@@ -73,9 +73,9 @@ class KGAT_wrapper:
         return kg_batch_loss
 
     def __update_attention(self, data, model):
-        h_list = data.h_list.to(device)
-        t_list = data.t_list.to(device)
-        r_list = data.r_list.to(device)
+        h_list = data.h_list.to(self.device)
+        t_list = data.t_list.to(self.device)
+        r_list = data.r_list.to(self.device)
         relations = list(data.laplacian_dict.keys())
         model(h_list, t_list, r_list, relations, mode='update_att')
 
@@ -91,7 +91,7 @@ class KGAT_wrapper:
         # construct model
         model = KGAT(args, data.n_users, data.n_entities, data.n_relations, data.A_in, user_pre_embed, item_pre_embed)
         if args.use_pretrain == 2: model = load_model(model, args.pretrain_model_path)
-        model.to(device)
+        model.to(self.device)
         logging.info(model)
 
         # construct optimizer
@@ -147,7 +147,7 @@ class KGAT_wrapper:
             if (epoch % args.evaluate_every) == 0 or epoch == args.n_epoch:
                 time6 = time()
 
-                _, metrics_dict = self.evaluate(model, data, Ks, device)
+                _, metrics_dict = self.evaluate(model, data, Ks, self.device)
 
                 logging.info('CF Evaluation: Epoch {:04d} | Total Time {:.1f}s | Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(epoch, time() - time6, metrics_dict[k_min]['precision'], metrics_dict[k_max]['precision'], metrics_dict[k_min]['recall'], metrics_dict[k_max]['recall'], metrics_dict[k_min]['ndcg'], metrics_dict[k_max]['ndcg']))
 
@@ -192,7 +192,7 @@ class KGAT_wrapper:
         user_ids_batches = [torch.LongTensor(d) for d in user_ids_batches]
 
         n_items = dataloader.n_items
-        item_ids = torch.arange(n_items, dtype=torch.long).to(device)
+        item_ids = torch.arange(n_items, dtype=torch.long).to(self.device)
 
         cf_scores = []
         metric_names = ['precision', 'recall', 'ndcg']
@@ -200,7 +200,7 @@ class KGAT_wrapper:
 
         with tqdm(total=len(user_ids_batches), desc='Evaluating Iteration') as pbar:
             for batch_user_ids in user_ids_batches:
-                batch_user_ids = batch_user_ids.to(device)
+                batch_user_ids = batch_user_ids.to(self.device)
 
                 with torch.no_grad():
                     batch_scores = model(batch_user_ids, item_ids, mode='predict')       # (n_batch_users, n_items)
@@ -236,7 +236,7 @@ class KGAT_wrapper:
         Ks = eval(args.Ks)
         k_min = min(Ks)
         k_max = max(Ks)
-        cf_scores, metrics_dict = self.evaluate(model, data, Ks, device)
+        cf_scores, metrics_dict = self.evaluate(model, data, Ks, self.device)
 
         np.save(args.save_dir + 'cf_scores.npy', cf_scores)
         print('CF Evaluation: Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(metrics_dict[k_min]['precision'], metrics_dict[k_max]['precision'], metrics_dict[k_min]['recall'], metrics_dict[k_max]['recall'], metrics_dict[k_min]['ndcg'], metrics_dict[k_max]['ndcg']))
@@ -245,7 +245,7 @@ class KGAT_wrapper:
 
 if __name__ == '__main__':
     args = parse_kgat_args()
-    if args.is_training == 1:
+    if args.is_training == '1':
         KGAT_wrapper().train(args)
     else:
         KGAT_wrapper().predict(args)

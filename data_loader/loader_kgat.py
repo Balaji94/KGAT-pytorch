@@ -32,9 +32,18 @@ class DataLoaderKGAT(DataLoaderBase):
         self.create_laplacian_dict()
 
     def __kg_statictics(self, kg_data):
-        self.n_relations = len(np.unique(kg_data['r']))
-        self.n_entities = len(np.unique(kg_data['h'])) + len(np.unique(kg_data['t']))
+        unique_relations = np.unique(kg_data['r'])
+        self.n_relations = len(unique_relations)
+        self.relations_ids = {r: i for i, r in enumerate(unique_relations)}
+
+        all_user_entities = list(np.unique(kg_data['h'])) + list(np.unique(kg_data['t']))
+        self.n_entities = len(all_user_entities)
+
+        self.users_entities = self.users + all_user_entities
+        self.users_entities_ids = {e : i for i, e in enumerate(self.users_entities)}
         self.n_users_entities = self.n_users + self.n_entities
+
+
 
     def __construct_data(self, kg_data):
         '''
@@ -62,19 +71,22 @@ class DataLoaderKGAT(DataLoaderBase):
 
         # Train user and Test user dicts
         self.train_user_dict = {
-            k: np.unique(v).astype(np.int32)
+            self.users_entities_ids[k]: np.unique([self.users_entities_ids[e] for e in v]).astype(np.int32)
             for k, v in self.train_user_dict.items()
         }
         self.test_user_dict = {
-            k: np.unique(v).astype(np.int32)
+            self.users_entities_ids[k]: np.unique([self.users_entities_ids[e] for e in v]).astype(np.int32)
             for k, v in self.test_user_dict.items()
         }
 
         # creating Bi-partite graph
         cf2kg_train_data = pd.DataFrame(np.zeros((self.n_cf_train, 3), dtype=np.int32), columns=['h', 'r', 't'])
+        interaction_r = 442043
         cf2kg_train_data['h'] = self.cf_train_data[0]
         cf2kg_train_data['t'] = self.cf_train_data[1]
-        cf2kg_train_data['r'] = 442043
+        cf2kg_train_data['r'] = interaction_r
+        self.n_relations += 1
+        self.relations_ids[interaction_r] = len(self.relations_ids)
 
         # creating Collaborative Knowledge Graph (CKG)
         self.kg_train_data = pd.concat([kg_data, cf2kg_train_data], ignore_index=True)
@@ -86,6 +98,10 @@ class DataLoaderKGAT(DataLoaderBase):
         self.train_relation_dict = collections.defaultdict(list)
         for row in self.kg_train_data.iterrows():
             h, r, t = row[1]
+            h = self.users_entities_ids[h]
+            r = self.relations_ids[r]
+            t = self.users_entities_ids[t]
+
             h_list.append(h)
             t_list.append(t)
             r_list.append(r)
@@ -128,15 +144,14 @@ class DataLoaderKGAT(DataLoaderBase):
         self.adjacency_dict = {}
         for r, ht_list in self.train_relation_dict.items():
             ''' r, [(h, t)] '''
-            rows = [e[0] for e in ht_list]  # h list
-            cols = [e[1] for e in ht_list]  # t list
+            rows = []; cols = []; vals = []
+            for e in ht_list:
+                row_idx, col_idx = e
+                rows.append(row_idx)  # h list
+                cols.append(col_idx)  # t list
+                vals.append(1)
 
-
-            unique_rows = np.unique(rows)
-            unique_cols = np.unique(cols)
-            vals = [1] * len(unique_rows)  # len(unique_rows or unique_cols)
-
-            adj = sp.coo_matrix((vals, (unique_rows, unique_cols)), shape=(self.n_users_entities, self.n_users_entities))
+            adj = sp.coo_matrix((vals, (rows, cols)), shape=(self.n_users_entities, self.n_users_entities))
             self.adjacency_dict[r] = adj
 
 
