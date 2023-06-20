@@ -194,23 +194,30 @@ class KGAT_wrapper:
 
         print("Training Completed successfully...")
 
-    def evaluate(self, model, dataloader, Ks, device, test_job_id=None, test_candidate_id=None):
+    def evaluate(self, model, dataloader, Ks, device, is_prediction=False, test_job_id=None, test_candidate_id=None):
         model.eval()
 
         test_batch_size = dataloader.test_batch_size
         train_user_dict = dataloader.train_user_dict
         test_user_dict = dataloader.test_user_dict
 
-        all_user_ids = list(test_user_dict.keys())
-        all_item_ids = dataloader.items
+        if is_prediction:
+            all_user_ids = dataloader.users
+            user_ids_filtered = [og_id for og_id in all_user_ids if test_job_id is None or str(test_job_id) == str(og_id)]
+            user_ids = [dataloader.remap_id(og_id) for og_id in user_ids_filtered]
 
-        user_ids_unmapped = [og_id for og_id in all_user_ids if test_job_id is None or str(test_job_id) == str(og_id)]
-        user_ids = [dataloader.remap_id(og_id) for og_id in user_ids_unmapped]
+            all_item_ids = dataloader.items
+            item_ids_filtered = [og_id for og_id in all_item_ids if test_candidate_id is None or str(test_candidate_id) == str(og_id)]
+            item_ids = [dataloader.remap_id(og_id) for og_id in item_ids_filtered]
+        else:
+            user_ids = list(test_user_dict.keys())
+
+            all_item_ids = dataloader.items
+            item_ids = [dataloader.remap_id(og_id) for og_id in all_item_ids]
+
+
         user_ids_batches = [user_ids[i: i + test_batch_size] for i in range(0, len(user_ids), test_batch_size)]
         user_ids_batches = [torch.LongTensor(d) for d in user_ids_batches]
-
-        item_ids_unmapped = [og_id for og_id in all_item_ids if test_candidate_id is None or str(test_candidate_id) == str(og_id)]
-        item_ids = [dataloader.remap_id(og_id) for og_id in item_ids_unmapped]
         item_ids = torch.LongTensor(item_ids)
 
         cf_scores = []
@@ -237,7 +244,7 @@ class KGAT_wrapper:
         for k in Ks:
             for m in metric_names:
                 metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
-        return cf_scores, metrics_dict, (user_ids_unmapped, item_ids_unmapped)
+        return cf_scores, metrics_dict, (user_ids_filtered, item_ids_unmapped)
 
     def predict(self, job_id=None, candidate_id=None):
         # GPU / CPU

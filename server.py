@@ -10,11 +10,11 @@ kgat_wrapper = None
 
 @app.route("/")
 def home():
-    return "KGAT POC"
+    return "<h1>KGAT POC<h1>"
 
 @app.route("/train", methods=['GET'])
 def train():
-    kgat_wrapper.train(args)
+    kgat_wrapper.train()
     return "Training Done!!!"
 
 @app.route("/predict", methods=['GET'])
@@ -53,4 +53,3 @@ if __name__ == '__main__':
     kgat_wrapper.data = DataLoaderKGAT(args, logging)
 
     app.run(port=8000, debug=True)
-    
