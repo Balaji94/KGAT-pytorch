@@ -211,9 +211,11 @@ class KGAT_wrapper:
             item_ids = [dataloader.remap_id(og_id) for og_id in item_ids_filtered]
         else:
             user_ids = list(test_user_dict.keys())
+            user_ids_filtered = []
 
             all_item_ids = dataloader.items
             item_ids = [dataloader.remap_id(og_id) for og_id in all_item_ids]
+            item_ids_filtered = []
 
 
         user_ids_batches = [user_ids[i: i + test_batch_size] for i in range(0, len(user_ids), test_batch_size)]
@@ -244,7 +246,7 @@ class KGAT_wrapper:
         for k in Ks:
             for m in metric_names:
                 metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
-        return cf_scores, metrics_dict, (user_ids_filtered, item_ids_unmapped)
+        return cf_scores, metrics_dict, (user_ids_filtered, item_ids_filtered)
 
     def predict(self, job_id=None, candidate_id=None):
         # GPU / CPU
