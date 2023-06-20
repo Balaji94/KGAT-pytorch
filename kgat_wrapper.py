@@ -229,7 +229,7 @@ class KGAT_wrapper:
                 batch_user_ids = batch_user_ids.to(self.device)
 
                 with torch.no_grad():
-                    batch_scores = model(batch_user_ids, item_ids_remapped, mode='predict')       # (n_batch_users, n_items)
+                    batch_scores = model(batch_user_ids, item_ids, mode='predict')       # (n_batch_users, n_items)
 
                 batch_scores = batch_scores.cpu()
                 batch_metrics = calc_metrics_at_k(batch_scores, train_user_dict, test_user_dict, batch_user_ids.cpu().numpy(), item_ids.cpu().numpy(), Ks)
@@ -264,7 +264,7 @@ class KGAT_wrapper:
         Ks = eval(args.Ks)
         k_min = min(Ks)
         k_max = max(Ks)
-        cf_scores, metrics_dict, ids = self.evaluate(model, data, Ks, self.device, test_job_id=job_id, test_candidate_id=candidate_id)
+        cf_scores, metrics_dict, ids = self.evaluate(model, data, Ks, self.device, is_prediction=True, test_job_id=job_id, test_candidate_id=candidate_id)
 
         np.save(args.save_dir + 'cf_scores.npy', cf_scores)
         print('CF Evaluation: Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(metrics_dict[k_min]['precision'], metrics_dict[k_max]['precision'], metrics_dict[k_min]['recall'], metrics_dict[k_max]['recall'], metrics_dict[k_min]['ndcg'], metrics_dict[k_max]['ndcg']))
