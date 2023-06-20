@@ -33,12 +33,14 @@ def get_candidates():
 @app.route("/rc/<jobid>", methods=['GET'])
 def rc(jobid):
     top_k = 10
+    top_k_recommendations = []
     cf_scores, metrics_dict, ids = kgat_wrapper.predict(job_id=jobid)
     return top_k_recommendations
 
 @app.route("/rj/<candidateid>", methods=['GET'])
 def rj(candidateid):
     top_k = 10
+    top_k_recommendations = []
     cf_scores, metrics_dict, ids = kgat_wrapper.predict(candidate_id=candidateid)
     return top_k_recommendations
 
@@ -52,4 +54,4 @@ if __name__ == '__main__':
     kgat_wrapper = KGAT_wrapper(args)
     kgat_wrapper.data = DataLoaderKGAT(args, logging)
 
-    app.run(port=8000, debug=True)
+    app.run(port=8000, debug=False)
