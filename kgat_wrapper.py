@@ -1,7 +1,6 @@
 import os
 import sys
 import random
-from flask import Flask, jsonify
 from time import time
 
 import pandas as pd
@@ -17,13 +16,11 @@ from utils.metrics import *
 from utils.model_helper import *
 from data_loader.loader_kgat import DataLoaderKGAT
 
-app = Flask("KGAT")
-
 class KGAT_wrapper:
 
     data = None
 
-    def __init__(self):
+    def __init__(self, args):
         # seed
         random.seed(args.seed)
         np.random.seed(args.seed)
@@ -37,6 +34,7 @@ class KGAT_wrapper:
 
         # GPU / CPU config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.args = args
 
     def __train_cf_batch(self, batch, data, model, cf_optimizer):
         cf_batch_user, cf_batch_pos_item, cf_batch_neg_item = data.generate_cf_batch(data.train_user_dict,
@@ -83,9 +81,10 @@ class KGAT_wrapper:
         relations = list(data.laplacian_dict.keys())
         model(h_list, t_list, r_list, relations, mode='update_att')
 
-    def train(self, args):
+    def train(self):
         print("Training Started...")
 
+        args = self.args
         data = self.data
 
         if args.use_pretrain == 1:
@@ -155,7 +154,7 @@ class KGAT_wrapper:
             if (epoch % args.evaluate_every) == 0 or epoch == args.n_epoch:
                 time6 = time()
 
-                _, metrics_dict = self.evaluate(model, data, Ks, self.device)
+                _, metrics_dict, __ = self.evaluate(model, data, Ks, self.device)
 
                 logging.info('CF Evaluation: Epoch {:04d} | Total Time {:.1f}s | Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(epoch, time() - time6, metrics_dict[k_min]['precision'], metrics_dict[k_max]['precision'], metrics_dict[k_min]['recall'], metrics_dict[k_max]['recall'], metrics_dict[k_min]['ndcg'], metrics_dict[k_max]['ndcg']))
 
@@ -195,18 +194,24 @@ class KGAT_wrapper:
 
         print("Training Completed successfully...")
 
-    def evaluate(self, model, dataloader, Ks, device, test_user_ids=None):
+    def evaluate(self, model, dataloader, Ks, device, test_job_id=None, test_candidate_id=None):
         model.eval()
 
         test_batch_size = dataloader.test_batch_size
         train_user_dict = dataloader.train_user_dict
         test_user_dict = dataloader.test_user_dict
 
-        user_ids = list(test_user_dict.keys()) if test_user_ids is None else [dataloader.remap_id(og_id) for og_id in test_user_ids]
+        all_user_ids = list(test_user_dict.keys())
+        all_item_ids = dataloader.items
+
+        user_ids_unmapped = [og_id for og_id in all_user_ids if test_job_id is None or str(test_job_id) == str(og_id)]
+        user_ids = [dataloader.remap_id(og_id) for og_id in user_ids_unmapped]
         user_ids_batches = [user_ids[i: i + test_batch_size] for i in range(0, len(user_ids), test_batch_size)]
         user_ids_batches = [torch.LongTensor(d) for d in user_ids_batches]
 
-        item_ids = torch.LongTensor([dataloader.remap_id(id) for id in dataloader.items])
+        item_ids_unmapped = [og_id for og_id in all_item_ids if test_candidate_id is None or str(test_candidate_id) == str(og_id)]
+        item_ids = [dataloader.remap_id(og_id) for og_id in item_ids_unmapped]
+        item_ids = torch.LongTensor(item_ids)
 
         cf_scores = []
         metric_names = ['precision', 'recall', 'ndcg']
@@ -217,7 +222,7 @@ class KGAT_wrapper:
                 batch_user_ids = batch_user_ids.to(self.device)
 
                 with torch.no_grad():
-                    batch_scores = model(batch_user_ids, item_ids, mode='predict')       # (n_batch_users, n_items)
+                    batch_scores = model(batch_user_ids, item_ids_remapped, mode='predict')       # (n_batch_users, n_items)
 
                 batch_scores = batch_scores.cpu()
                 batch_metrics = calc_metrics_at_k(batch_scores, train_user_dict, test_user_dict, batch_user_ids.cpu().numpy(), item_ids.cpu().numpy(), Ks)
@@ -232,14 +237,12 @@ class KGAT_wrapper:
         for k in Ks:
             for m in metric_names:
                 metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
-        return cf_scores, metrics_dict
+        return cf_scores, metrics_dict, (user_ids_unmapped, item_ids_unmapped)
 
-    def predict(self, args):
+    def predict(self, job_id=None, candidate_id=None):
         # GPU / CPU
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        # load data
-        # data_loader_processed = os.path.join(args['data_dir'], 'pretrain', args['data_name'], 'data_loader', 'dataloader.pkl')
+        args = self.args
 
         if self.data is None:
             self.data = DataLoaderKGAT(args, logging)
@@ -254,68 +257,17 @@ class KGAT_wrapper:
         Ks = eval(args.Ks)
         k_min = min(Ks)
         k_max = max(Ks)
-        cf_scores, metrics_dict = self.evaluate(model, data, Ks, self.device)
+        cf_scores, metrics_dict, ids = self.evaluate(model, data, Ks, self.device, test_job_id=job_id, test_candidate_id=candidate_id)
 
         np.save(args.save_dir + 'cf_scores.npy', cf_scores)
         print('CF Evaluation: Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(metrics_dict[k_min]['precision'], metrics_dict[k_max]['precision'], metrics_dict[k_min]['recall'], metrics_dict[k_max]['recall'], metrics_dict[k_min]['ndcg'], metrics_dict[k_max]['ndcg']))
         self.data = data
 
-        return cf_scores, metrics_dict
-
-    def recommend_candidates(self, job_id, k=5):
-        return 0
-
-    def recommend_jobs(self, candidate_id, k=5):
-        return 1
-
-args = None
-kgat_wrapper = None
-
-@app.route("/")
-def home():
-    return "KGAT POC"
-
-@app.route("/train", methods=['GET'])
-def train():
-    kgat_wrapper.train(args)
-    return "Training Done!!!"
-
-@app.route("/predict", methods=['GET'])
-def predict():
-    cf_scores, metrics_dict = kgat_wrapper.predict(args)
-    return str(cf_scores)
-
-@app.route("/jobs", methods=['GET'])
-def get_jobs():
-    return str(kgat_wrapper.data.users)
-
-@app.route("/candidates", methods=['GET'])
-def get_candidates():
-    return str(kgat_wrapper.data.items)
-
-@app.route("/rc/<jobid>", methods=['GET'])
-def rc(jobid):
-    top_k = 10
-    top_k_recommendations = kgat_wrapper.recommend_candidates(jobid, top_k)
-    return top_k_recommendations
-
-@app.route("/rj/<candidateid>", methods=['GET'])
-def rj(candidateid):
-    top_k = 10
-    top_k_recommendations = kgat_wrapper.recommend_jobs(candidateid, top_k)
-    return top_k_recommendations
+        return cf_scores, metrics_dict, ids
 
 
 
-if __name__ == '__main__':
 
-    args = parse_kgat_args()
-    args.pretrain_model_path = args.pretrain_model_path.replace("model.pth", "kgat_model_recruit.pth")
-
-    kgat_wrapper = KGAT_wrapper()
-    kgat_wrapper.data = DataLoaderKGAT(args, logging)
-
-    app.run(port=8000, debug=True)
 
 
 
