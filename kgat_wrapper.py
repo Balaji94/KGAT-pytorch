@@ -224,7 +224,7 @@ class KGAT_wrapper:
 
         cf_scores = []
         metric_names = ['precision', 'recall', 'ndcg']
-        metrics_dict = {k: {m: [] for m in metric_names} for k in Ks}
+        metrics_dict = {k: {m: [] for m in metric_names} for k in Ks} if not is_prediction else {}
 
         with tqdm(total=len(user_ids_batches), desc='Evaluating Iteration') as pbar:
             for batch_user_ids in user_ids_batches:
@@ -234,18 +234,22 @@ class KGAT_wrapper:
                     batch_scores = model(batch_user_ids, item_ids, mode='predict')       # (n_batch_users, n_items)
 
                 batch_scores = batch_scores.cpu()
-                batch_metrics = calc_metrics_at_k(batch_scores, train_user_dict, test_user_dict, batch_user_ids.cpu().numpy(), item_ids.cpu().numpy(), Ks)
+                if not is_prediction:
+                    batch_metrics = calc_metrics_at_k(batch_scores, train_user_dict, test_user_dict, batch_user_ids.cpu().numpy(), item_ids.cpu().numpy(), Ks)
 
                 cf_scores.append(batch_scores.numpy())
-                for k in Ks:
-                    for m in metric_names:
-                        metrics_dict[k][m].append(batch_metrics[k][m])
+
+                if not is_prediction:
+                    for k in Ks:
+                        for m in metric_names:
+                            metrics_dict[k][m].append(batch_metrics[k][m])
                 pbar.update(1)
 
         cf_scores = np.concatenate(cf_scores, axis=0)
-        for k in Ks:
-            for m in metric_names:
-                metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
+        if not is_prediction:
+            for k in Ks:
+                for m in metric_names:
+                    metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
         return cf_scores, metrics_dict, (user_ids_filtered, item_ids_filtered)
 
     def predict(self, job_id=None, candidate_id=None):
@@ -269,7 +273,7 @@ class KGAT_wrapper:
         cf_scores, metrics_dict, ids = self.evaluate(model, data, Ks, self.device, is_prediction=True, test_job_id=job_id, test_candidate_id=candidate_id)
 
         np.save(args.save_dir + 'cf_scores.npy', cf_scores)
-        print('CF Evaluation: Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(metrics_dict[k_min]['precision'], metrics_dict[k_max]['precision'], metrics_dict[k_min]['recall'], metrics_dict[k_max]['recall'], metrics_dict[k_min]['ndcg'], metrics_dict[k_max]['ndcg']))
+        # print('CF Evaluation: Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(metrics_dict[k_min]['precision'], metrics_dict[k_max]['precision'], metrics_dict[k_min]['recall'], metrics_dict[k_max]['recall'], metrics_dict[k_min]['ndcg'], metrics_dict[k_max]['ndcg']))
         self.data = data
 
         return cf_scores, metrics_dict, ids
