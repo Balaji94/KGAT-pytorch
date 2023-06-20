@@ -240,6 +240,11 @@ class KGAT(nn.Module):
 
         # Equation (12)
         cf_score = torch.matmul(user_embed, item_embed.transpose(0, 1))    # (n_users, n_items)
+        for i, scores in enumerate(cf_score):
+            min_value = torch.min(scores)
+            max_value = torch.max(scores)
+            scaled_cf_score = 100 * (cf_score - min_value) / (max_value - min_value)
+            cf_score[i] = scaled_cf_score
         return cf_score
 
 
