@@ -85,8 +85,9 @@ class KGAT_wrapper:
 
     def train(self, args):
         print("Training Started...")
-        # load data
-        data = DataLoaderKGAT(args, logging)
+
+        data = self.data
+
         if args.use_pretrain == 1:
             user_pre_embed = torch.tensor(data.user_pre_embed)
             item_pre_embed = torch.tensor(data.item_pre_embed)
@@ -165,6 +166,7 @@ class KGAT_wrapper:
                 best_recall, should_stop = early_stopping(metrics_list[k_min]['recall'], args.stopping_steps)
 
                 if should_stop:
+                    print("Early stopping...")
                     break
 
                 if metrics_list[k_min]['recall'].index(best_recall) == len(epoch_list) - 1:
@@ -240,9 +242,8 @@ class KGAT_wrapper:
         # data_loader_processed = os.path.join(args['data_dir'], 'pretrain', args['data_name'], 'data_loader', 'dataloader.pkl')
 
         if self.data is None:
-            data = DataLoaderKGAT(args, logging)
-        else:
-            data = self.data
+            self.data = DataLoaderKGAT(args, logging)
+        data = self.data
 
         # load model
         model = KGAT(args, data.n_users, data.n_entities, data.n_relations)
@@ -261,6 +262,12 @@ class KGAT_wrapper:
 
         return cf_scores, metrics_dict
 
+    def recommend_candidates(self, job_id, k=5):
+        return 0
+
+    def recommend_jobs(self, candidate_id, k=5):
+        return 1
+
 args = None
 kgat_wrapper = None
 
@@ -276,16 +283,37 @@ def train():
 @app.route("/predict", methods=['GET'])
 def predict():
     cf_scores, metrics_dict = kgat_wrapper.predict(args)
-    return cf_scores
+    return str(cf_scores)
+
+@app.route("/jobs", methods=['GET'])
+def get_jobs():
+    return str(kgat_wrapper.data.users)
+
+@app.route("/candidates", methods=['GET'])
+def get_candidates():
+    return str(kgat_wrapper.data.items)
+
+@app.route("/rc/<jobid>", methods=['GET'])
+def rc(jobid):
+    top_k = 10
+    top_k_recommendations = kgat_wrapper.recommend_candidates(job_id, top_k)
+    return top_k_recommendations
+
+@app.route("/rj/<candidateid>", methods=['GET'])
+def rj(candidateid):
+    top_k = 10
+    top_k_recommendations = kgat_wrapper.recommend_jobs(candidate_id, top_k)
+    return top_k_recommendations
+
 
 
 if __name__ == '__main__':
 
     args = parse_kgat_args()
-
     args.pretrain_model_path = args.pretrain_model_path.replace("model.pth", "kgat_model_recruit.pth")
 
     kgat_wrapper = KGAT_wrapper()
+    kgat_wrapper.data = DataLoaderKGAT(args, logging)
 
     app.run(port=8000, debug=True)
 
