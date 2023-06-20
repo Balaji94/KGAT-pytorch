@@ -296,13 +296,13 @@ def get_candidates():
 @app.route("/rc/<jobid>", methods=['GET'])
 def rc(jobid):
     top_k = 10
-    top_k_recommendations = kgat_wrapper.recommend_candidates(job_id, top_k)
+    top_k_recommendations = kgat_wrapper.recommend_candidates(jobid, top_k)
     return top_k_recommendations
 
 @app.route("/rj/<candidateid>", methods=['GET'])
 def rj(candidateid):
     top_k = 10
-    top_k_recommendations = kgat_wrapper.recommend_jobs(candidate_id, top_k)
+    top_k_recommendations = kgat_wrapper.recommend_jobs(candidateid, top_k)
     return top_k_recommendations
 
 
