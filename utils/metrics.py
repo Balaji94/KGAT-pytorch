@@ -122,7 +122,6 @@ def calc_metrics_at_k(cf_scores, train_user_dict, test_user_dict, user_ids, item
 
     """
     test_pos_item_binary = np.zeros([len(user_ids), len(item_ids)], dtype=np.float32)
-    batch_user_id_mappings = {u : i for i, u in enumerate(user_ids)}
     batch_item_id_mappings = {e : i for i, e in enumerate(item_ids)}
     for idx, u in enumerate(user_ids):
         train_pos_item_list = [batch_item_id_mappings[i] for i in train_user_dict[u]] if u in train_user_dict else []

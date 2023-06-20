@@ -1,6 +1,7 @@
 import os
 import sys
 import random
+from flask import Flask, jsonify
 from time import time
 
 import pandas as pd
@@ -16,9 +17,11 @@ from utils.metrics import *
 from utils.model_helper import *
 from data_loader.loader_kgat import DataLoaderKGAT
 
-
+app = Flask("KGAT")
 
 class KGAT_wrapper:
+
+    data = None
 
     def __init__(self):
         # seed
@@ -81,6 +84,7 @@ class KGAT_wrapper:
         model(h_list, t_list, r_list, relations, mode='update_att')
 
     def train(self, args):
+        print("Training Started...")
         # load data
         data = DataLoaderKGAT(args, logging)
         if args.use_pretrain == 1:
@@ -90,8 +94,9 @@ class KGAT_wrapper:
             user_pre_embed, item_pre_embed = None, None
 
         # construct model
+        print("Constructing Model...")
         model = KGAT(args, data.n_users, data.n_entities, data.n_relations, data.A_in, user_pre_embed, item_pre_embed)
-        if args.use_pretrain == 2: model = load_model(model, args.pretrain_model_path)
+        if args.use_pretrain == 2:model = load_model(model, args.pretrain_model_path)
         model.to(self.device)
         logging.info(model)
 
@@ -110,6 +115,7 @@ class KGAT_wrapper:
 
         # train model
         for epoch in range(1, args.n_epoch + 1):
+            print(f"Model epoch {epoch}")
             time0 = time()
             model.train()
 
@@ -162,9 +168,11 @@ class KGAT_wrapper:
                     break
 
                 if metrics_list[k_min]['recall'].index(best_recall) == len(epoch_list) - 1:
-                    save_model(model, args.save_dir, epoch, best_epoch)
+                    print("Saving model...")
+                    save_model(model, args.save_dir, epoch, best_epoch, final_path=args.pretrain_model_path)
                     logging.info('Save model on epoch {:04d}!'.format(epoch))
                     best_epoch = epoch
+
 
         # save metrics
         metrics_df = [epoch_list]
@@ -181,14 +189,18 @@ class KGAT_wrapper:
         best_metrics = metrics_df.loc[metrics_df['epoch_idx'] == best_epoch].iloc[0].to_dict()
         logging.info('Best CF Evaluation: Epoch {:04d} | Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(int(best_metrics['epoch_idx']), best_metrics['precision@{}'.format(k_min)], best_metrics['precision@{}'.format(k_max)], best_metrics['recall@{}'.format(k_min)], best_metrics['recall@{}'.format(k_max)], best_metrics['ndcg@{}'.format(k_min)], best_metrics['ndcg@{}'.format(k_max)]))
 
-    def evaluate(self, model, dataloader, Ks, device):
+        self.data = data
+
+        print("Training Completed successfully...")
+
+    def evaluate(self, model, dataloader, Ks, device, test_user_ids=None):
+        model.eval()
+
         test_batch_size = dataloader.test_batch_size
         train_user_dict = dataloader.train_user_dict
         test_user_dict = dataloader.test_user_dict
 
-        model.eval()
-        # M
-        user_ids = list(test_user_dict.keys())
+        user_ids = list(test_user_dict.keys()) if test_user_ids is None else [dataloader.remap_id(og_id) for og_id in test_user_ids]
         user_ids_batches = [user_ids[i: i + test_batch_size] for i in range(0, len(user_ids), test_batch_size)]
         user_ids_batches = [torch.LongTensor(d) for d in user_ids_batches]
 
@@ -225,7 +237,12 @@ class KGAT_wrapper:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # load data
-        data = DataLoaderKGAT(args, logging)
+        # data_loader_processed = os.path.join(args['data_dir'], 'pretrain', args['data_name'], 'data_loader', 'dataloader.pkl')
+
+        if self.data is None:
+            data = DataLoaderKGAT(args, logging)
+        else:
+            data = self.data
 
         # load model
         model = KGAT(args, data.n_users, data.n_entities, data.n_relations)
@@ -240,14 +257,38 @@ class KGAT_wrapper:
 
         np.save(args.save_dir + 'cf_scores.npy', cf_scores)
         print('CF Evaluation: Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]'.format(metrics_dict[k_min]['precision'], metrics_dict[k_max]['precision'], metrics_dict[k_min]['recall'], metrics_dict[k_max]['recall'], metrics_dict[k_min]['ndcg'], metrics_dict[k_max]['ndcg']))
+        self.data = data
 
+        return cf_scores, metrics_dict
+
+args = None
+kgat_wrapper = None
+
+@app.route("/")
+def home():
+    return "KGAT POC"
+
+@app.route("/train", methods=['GET'])
+def train():
+    kgat_wrapper.train(args)
+    return "Training Done!!!"
+
+@app.route("/predict", methods=['GET'])
+def predict():
+    cf_scores, metrics_dict = kgat_wrapper.predict(args)
+    return cf_scores
 
 
 if __name__ == '__main__':
+
     args = parse_kgat_args()
-    if args.is_training == '1':
-        KGAT_wrapper().train(args)
-    else:
-        KGAT_wrapper().predict(args)
+
+    args.pretrain_model_path = args.pretrain_model_path.replace("model.pth", "kgat_model_recruit.pth")
+
+    kgat_wrapper = KGAT_wrapper()
+
+    app.run(port=8000, debug=True)
+
+
 
 

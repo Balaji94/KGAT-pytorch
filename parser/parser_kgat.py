@@ -33,7 +33,7 @@ def parse_kgat_args():
 
     parser.add_argument('--laplacian_type', type=str, default='random-walk',
                         help='Specify the type of the adjacency (laplacian) matrix from {symmetric, random-walk}.')
-    parser.add_argument('--aggregation_type', type=str, default='bi-interaction',
+    parser.add_argument('--aggregation_type', type=str, default='gcn',
                         help='Specify the type of the aggregation layer from {gcn, graphsage, bi-interaction}.')
     parser.add_argument('--conv_dim_list', nargs='?', default='[64, 32, 16]',
                         help='Output sizes of every aggregation layer.')
@@ -56,7 +56,7 @@ def parse_kgat_args():
                         help='Iter interval of printing CF loss.')
     parser.add_argument('--kg_print_every', type=int, default=1,
                         help='Iter interval of printing KG loss.')
-    parser.add_argument('--evaluate_every', type=int, default=10,
+    parser.add_argument('--evaluate_every', type=int, default=1,
                         help='Epoch interval of evaluating CF.')
 
     parser.add_argument('--Ks', nargs='?', default='[20, 40, 60, 80, 100]',

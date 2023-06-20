@@ -13,6 +13,7 @@ from data_loader.loader_base import DataLoaderBase
 class DataLoaderKGAT(DataLoaderBase):
 
     def __init__(self, args, logging):
+        print("DataLoaderKGAT initializing...")
         # CF data are obtained here
         super().__init__(args, logging)
         self.cf_batch_size = args.cf_batch_size
@@ -48,6 +49,8 @@ class DataLoaderKGAT(DataLoaderBase):
         return self.users_entities_ids[og_id] if not is_relation else self.relations_ids[og_id]
 
     def __construct_data(self, kg_data):
+        print("DataLoaderKGAT constructing data...")
+
         '''
             1. kg_data preparation: Adding inverse kg_data to kg_data
             2. Remapping user id to make user ids unique
@@ -125,6 +128,8 @@ class DataLoaderKGAT(DataLoaderBase):
 
 
     def create_adjacency_dict(self):
+        print("DataLoaderKGAT creating adj matrix...")
+
         '''
             Making adjacency matrices for all relations with the heads and tails as vertical and horizontal axes
             Adjacency matrix of r1:
@@ -158,6 +163,8 @@ class DataLoaderKGAT(DataLoaderBase):
 
 
     def create_laplacian_dict(self):
+        print("DataLoaderKGAT creating lap matrix...")
+
         def symmetric_norm_lap(adj):
             rowsum = np.array(adj.sum(axis=1))
 
