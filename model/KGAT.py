@@ -229,7 +229,7 @@ class KGAT(nn.Module):
         self.A_in.data = A_in.to(device)
 
 
-    def calc_score(self, user_ids, item_ids):
+    def calc_score(self, user_ids, item_ids, is_prediction=False):
         """
         user_ids:  (n_users)
         item_ids:  (n_items)
@@ -240,11 +240,12 @@ class KGAT(nn.Module):
 
         # Equation (12)
         cf_score = torch.matmul(user_embed, item_embed.transpose(0, 1))    # (n_users, n_items)
-        for i, scores in enumerate(cf_score):
-            min_value = torch.min(scores)
-            max_value = torch.max(scores)
-            scaled_cf_score = 100 * (cf_score - min_value) / (max_value - min_value)
-            cf_score[i] = scaled_cf_score
+        if is_prediction:
+            for i, scores in enumerate(cf_score):
+                min_value = torch.min(scores)
+                max_value = torch.max(scores)
+                scaled_cf_score = 100 * (cf_score - min_value) / (max_value - min_value)
+                cf_score[i] = scaled_cf_score
         return cf_score
 
 
@@ -255,7 +256,9 @@ class KGAT(nn.Module):
             return self.calc_kg_loss(*input)
         if mode == 'update_att':
             return self.update_attention(*input)
-        if mode == 'predict':
+        if mode == 'evaluate':
             return self.calc_score(*input)
+        if mode == 'predict':
+            return self.calc_score(*input, is_prediction=True)
 
 

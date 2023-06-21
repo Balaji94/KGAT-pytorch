@@ -86,7 +86,7 @@ class DataLoaderKGAT(DataLoaderBase):
 
         # creating Bi-partite graph
         cf2kg_train_data = pd.DataFrame(np.zeros((self.n_cf_train, 3), dtype=np.int32), columns=['h', 'r', 't'])
-        interaction_r = 442043
+        interaction_r = 548902
         cf2kg_train_data['h'] = self.cf_train_data[0]
         cf2kg_train_data['t'] = self.cf_train_data[1]
         cf2kg_train_data['r'] = interaction_r

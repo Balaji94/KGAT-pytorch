@@ -2,4 +2,5 @@ id,name
 r_0,possess
 r_1,requires
 r_2,similar_to
-r_3,interacted
+r_3,hires
+r_4,interacted
