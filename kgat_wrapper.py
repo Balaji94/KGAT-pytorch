@@ -231,7 +231,10 @@ class KGAT_wrapper:
                 batch_user_ids = batch_user_ids.to(self.device)
 
                 with torch.no_grad():
-                    batch_scores = model(batch_user_ids, item_ids, mode='predict')       # (n_batch_users, n_items)
+                    if is_prediction:
+                        batch_scores = model(batch_user_ids, item_ids, mode='predict')       # (n_batch_users, n_items)
+                    else:
+                        batch_scores = model(batch_user_ids, item_ids, mode='evaluate')       # (n_batch_users, n_items)
 
                 batch_scores = batch_scores.cpu()
                 if not is_prediction:
