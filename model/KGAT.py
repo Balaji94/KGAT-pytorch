@@ -228,6 +228,23 @@ class KGAT(nn.Module):
         A_in = torch.sparse.softmax(A_in.cpu(), dim=1)
         self.A_in.data = A_in.to(device)
 
+    def compare(self, id1, id2):
+        import torch.nn.functional as F
+
+        all_embed = self.calc_cf_embeddings()
+
+        embedding_1 = all_embed[id1]
+        embedding_2 = all_embed[id2]
+
+        embedding_1 = embedding_1.reshape(1, -1)
+        embedding_2 = embedding_2.reshape(1, -1)
+
+        embedding_1 = F.normalize(embedding_1, p=2, dim=1)
+        embedding_2 = F.normalize(embedding_2, p=2, dim=1)
+
+        similarity = F.cosine_similarity(embedding_1, embedding_2)
+
+        return similarity.item()
 
     def calc_score(self, user_ids, item_ids, is_prediction=False):
         """
@@ -237,6 +254,7 @@ class KGAT(nn.Module):
         all_embed = self.calc_cf_embeddings()           # (n_users + n_entities, concat_dim)
         user_embed = all_embed[user_ids]                # (n_users, concat_dim)
         item_embed = all_embed[item_ids]                # (n_items, concat_dim)
+        # visualise_embed = [list(e) for e in all_embed]
 
         # Equation (12)
         cf_score = torch.matmul(user_embed, item_embed.transpose(0, 1))    # (n_users, n_items)
@@ -260,5 +278,7 @@ class KGAT(nn.Module):
             return self.calc_score(*input)
         if mode == 'predict':
             return self.calc_score(*input, is_prediction=True)
+        if mode == 'compare':
+            return self.compare(*input)
 
 

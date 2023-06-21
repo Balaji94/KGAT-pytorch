@@ -1,0 +1,32 @@
+<html>
+<head>
+    <title>Similarity Checker</title>
+    <script>
+        function submitForm() {
+            var textbox1Value = document.getElementById("textbox1").value;
+            var textbox2Value = document.getElementById("textbox2").value;
+
+            // Encode the textbox values as query parameters
+            var queryParams = textbox1Value + "/" + textbox2Value;
+
+            // Construct the URL with the query parameters
+            var url = "compare/" + queryParams;
+
+            // Redirect the browser to the URL
+            console.log(url);
+            window.location.href = url;
+        }
+    </script>
+</head>
+<body>
+    <form onsubmit="submitForm(); return false;">
+        <label for="textbox1">Textbox 1:</label>
+        <input type="text" id="textbox1" name="textbox1" placeholder="Enter text for Textbox 1"><br><br>
+
+        <label for="textbox2">Textbox 2:</label>
+        <input type="text" id="textbox2" name="textbox2" placeholder="Enter text for Textbox 2"><br><br>
+
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
