@@ -16,10 +16,10 @@ def parse_kgat_args():
                         help='0: No pretrain, 1: Pretrain with the learned embeddings, 2: Pretrain with stored model.')
     parser.add_argument('--pretrain_embedding_dir', nargs='?', default='datasets/pretrain/',
                         help='Path of learned embeddings.')
-    parser.add_argument('--pretrain_model_path', nargs='?', default='trained_model/model.pth',
+    parser.add_argument('--pretrain_model_path', nargs='?', default='trained_model/KGAT/model.pth',
                         help='Path of stored model.')
 
-    parser.add_argument('--epoch_model_path', nargs='?', default='trained_model/model_epoch.pth',
+    parser.add_argument('--epoch_model_path', nargs='?', default='trained_model/epochs_models/model_epoch{}.pth',
                         help='Path of stored model.')
 
     parser.add_argument('--cf_batch_size', type=int, default=1024,
@@ -38,10 +38,15 @@ def parse_kgat_args():
                         help='Specify the type of the adjacency (laplacian) matrix from {symmetric, random-walk}.')
     parser.add_argument('--aggregation_type', type=str, default='gcn',
                         help='Specify the type of the aggregation layer from {gcn, graphsage, bi-interaction}.')
-    parser.add_argument('--conv_dim_list', nargs='?', default='[64, 32, 16]',
+    parser.add_argument('--conv_dim_list', nargs='?', default='[64, 32]',
                         help='Output sizes of every aggregation layer.')
-    parser.add_argument('--mess_dropout', nargs='?', default='[0.1, 0.1, 0.1]',
+    parser.add_argument('--mess_dropout', nargs='?', default='[0.1, 0.1]',
                         help='Dropout probability w.r.t. message dropout for each deep layer. 0: no dropout.')
+
+    # parser.add_argument('--conv_dim_list', nargs='?', default='[64, 32, 16]',
+    #                     help='Output sizes of every aggregation layer.')
+    # parser.add_argument('--mess_dropout', nargs='?', default='[0.1, 0.1, 0.1]',
+    #                     help='Dropout probability w.r.t. message dropout for each deep layer. 0: no dropout.')
 
     parser.add_argument('--kg_l2loss_lambda', type=float, default=1e-5,
                         help='Lambda when calculating KG l2 loss.')

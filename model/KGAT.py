@@ -243,9 +243,13 @@ class KGAT(nn.Module):
         r_mul_pos_t = torch.matmul(W_r, t_embed.unsqueeze(1)).squeeze(1)
 
         pos_score = torch.sum(torch.pow(r_mul_h + r_embed - r_mul_pos_t, 2))
-        loss = (-1.0) * F.logsigmoid(pos_score)
+        kg_score = (-1.0) * F.logsigmoid(pos_score)
 
-        return loss
+        cf_score = self.calc_score([id1], [id2])
+
+        score = f"KG Score : {kg_score}\nCF Score : {cf_score}"
+
+        return score
 
         # embedding_1 = all_embed[id1]
         # embedding_2 = all_embed[id2]

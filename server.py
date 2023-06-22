@@ -90,6 +90,8 @@ def compare(id1, r, id2):
     id1_idx = kgat_wrapper.data.users_entities.tolist().index(int(id1))
     id2_idx = kgat_wrapper.data.users_entities.tolist().index(int(id2))
 
+    print(len(kgat_wrapper.data.users_entities_ids))
+
     similarity = kgat_wrapper.compare(id1_idx, int(r), id2_idx)
     return str(similarity)
 
@@ -97,7 +99,7 @@ def compare(id1, r, id2):
 if __name__ == '__main__':
 
     args = parse_kgat_args()
-    args.pretrain_model_path = args.pretrain_model_path.replace("model.pth", "kgat_model_recruit.pth")
+    args.pretrain_model_path = args.pretrain_model_path
 
     kgat_wrapper = KGAT_wrapper(args)
     kgat_wrapper.data = DataLoaderKGAT(args, logging)

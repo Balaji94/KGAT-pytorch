@@ -173,7 +173,7 @@ class KGAT_wrapper:
                     save_model(model, args.save_dir, epoch, best_epoch, final_path=args.pretrain_model_path)
                     logging.info('Save model on epoch {:04d}!'.format(epoch))
                     best_epoch = epoch
-            save_model(model, args.save_dir, epoch, best_epoch, final_path=args.epoch_model_path)
+            save_model(model, args.save_dir, epoch, best_epoch, final_path=args.epoch_model_path.format(epoch))
 
 
         # save metrics
