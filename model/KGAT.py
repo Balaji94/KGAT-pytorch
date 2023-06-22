@@ -229,23 +229,35 @@ class KGAT(nn.Module):
         A_in = torch.sparse.softmax(A_in.cpu(), dim=1)
         self.A_in.data = A_in.to(device)
 
-    def compare(self, id1, id2):
+    def compare(self, id1, r, id2):
         import torch.nn.functional as F
 
-        all_embed = self.calc_cf_embeddings()
+        all_embed = self.entity_user_embed.weight
 
-        embedding_1 = all_embed[id1]
-        embedding_2 = all_embed[id2]
+        h_embed = all_embed[id1]
+        t_embed = all_embed[id2]
+        r_embed = self.relation_embed.weight[r]
+        W_r = self.trans_M[r]
 
-        embedding_1 = embedding_1.reshape(1, -1)
-        embedding_2 = embedding_2.reshape(1, -1)
+        r_mul_h = torch.matmul(W_r, h_embed.unsqueeze(1)).squeeze(1)
+        r_mul_pos_t = torch.matmul(W_r, t_embed.unsqueeze(1)).squeeze(1)
 
-        embedding_1 = F.normalize(embedding_1, p=2, dim=1)
-        embedding_2 = F.normalize(embedding_2, p=2, dim=1)
+        pos_score = torch.sum(torch.pow(r_mul_h + r_embed - r_mul_pos_t, 2))
+        loss = (-1.0) * F.logsigmoid(pos_score)
 
-        similarity = F.cosine_similarity(embedding_1, embedding_2)
+        return loss
 
-        return similarity.item()
+        # embedding_1 = all_embed[id1]
+        # embedding_2 = all_embed[id2]
+        # embedding_1 = embedding_1.reshape(1, -1)
+        # embedding_2 = embedding_2.reshape(1, -1)
+        #
+        # embedding_1 = F.normalize(embedding_1, p=2, dim=1)
+        # embedding_2 = F.normalize(embedding_2, p=2, dim=1)
+        #
+        # similarity = F.cosine_similarity(embedding_1, embedding_2)
+
+        # return similarity.item()
 
     def calc_score(self, user_ids, item_ids, is_prediction=False):
         """

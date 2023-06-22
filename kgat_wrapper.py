@@ -265,7 +265,7 @@ class KGAT_wrapper:
         data = self.data
 
         # load model
-        model = KGAT(args, data.n_users, data.n_entities, data.n_relations)
+        model = KGAT(args, data.n_users, data.n_entities, data.n_users_entities, data.n_relations)
         model = load_model(model, args.pretrain_model_path)
         model.to(device)
 
@@ -282,7 +282,7 @@ class KGAT_wrapper:
         return cf_scores, metrics_dict, ids
 
 
-    def compare(self, id1, id2):
+    def compare(self, id1, r, id2):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         args = self.args
 
@@ -291,11 +291,11 @@ class KGAT_wrapper:
         data = self.data
 
         # load model
-        model = KGAT(args, data.n_users, data.n_entities, data.n_relations)
+        model = KGAT(args, data.n_users, data.n_entities, data.n_users_entities, data.n_relations)
         model = load_model(model, args.pretrain_model_path)
         model.to(device)
 
-        similarity = model(id1, id2, mode="compare")
+        similarity = model(id1, r, id2, mode="compare")
         return similarity
 
 

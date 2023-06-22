@@ -85,12 +85,12 @@ def rj(candidateid):
 def check_similarity():
     return render_template("html/compare_form.html")
 
-@app.route("/compare/<id1>/<id2>", methods=['GET'])
-def compare(id1, id2):
-    id1_idx = kgat_wrapper.data.users_entities.index(int(id1))
-    id2_idx = kgat_wrapper.data.users_entities.index(int(id2))
+@app.route("/compare/<id1>/<r>/<id2>", methods=['GET'])
+def compare(id1, r, id2):
+    id1_idx = kgat_wrapper.data.users_entities.tolist().index(int(id1))
+    id2_idx = kgat_wrapper.data.users_entities.tolist().index(int(id2))
 
-    similarity = kgat_wrapper.compare(id1_idx, id2_idx)
+    similarity = kgat_wrapper.compare(id1_idx, int(r), id2_idx)
     return str(similarity)
 
 
