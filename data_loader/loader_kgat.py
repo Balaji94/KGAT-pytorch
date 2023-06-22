@@ -38,11 +38,12 @@ class DataLoaderKGAT(DataLoaderBase):
         self.relations_ids = {r: i for i, r in enumerate(unique_relations)}
 
         all_user_entities = list(np.unique(kg_data['h'])) + list(np.unique(kg_data['t']))
-        self.n_entities = len(all_user_entities)
+        self.n_entities = len(all_user_entities) - self.n_users
 
-        self.users_entities = self.users + all_user_entities
+        users_missing_in_kg = [u for u in self.users if u not in all_user_entities]
+        self.users_entities = np.unique(all_user_entities + users_missing_in_kg)
         self.users_entities_ids = {e : i for i, e in enumerate(self.users_entities)}
-        self.n_users_entities = self.n_users + self.n_entities
+        self.n_users_entities = self.n_entities + len(users_missing_in_kg)
 
 
     def remap_id(self, og_id, is_relation=False):
@@ -94,7 +95,7 @@ class DataLoaderKGAT(DataLoaderBase):
         self.relations_ids[interaction_r] = len(self.relations_ids)
 
         # creating Collaborative Knowledge Graph (CKG)
-        self.kg_train_data = pd.concat([kg_data, cf2kg_train_data], ignore_index=True)
+        self.kg_train_data = pd.concat([cf2kg_train_data, kg_data], ignore_index=True)
         self.n_kg_train = len(self.kg_train_data)
 
         # construct CKG data in required formats

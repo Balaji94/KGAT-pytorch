@@ -91,15 +91,16 @@ class DataLoaderBase(object):
         return sample_pos_items
 
 
-    def sample_neg_items_for_u(self, user_dict, user_id, n_sample_neg_items):
+    def sample_neg_items_for_u(self, user_dict, exist_items, user_id, n_sample_neg_items):
         pos_items = user_dict[user_id]
+
 
         sample_neg_items = []
         while True:
             if len(sample_neg_items) == n_sample_neg_items:
                 break
 
-            neg_item_id = np.random.randint(low=0, high=self.n_items, size=1)[0]
+            neg_item_id = np.random.choice(exist_items)
             if neg_item_id not in pos_items and neg_item_id not in sample_neg_items:
                 sample_neg_items.append(neg_item_id)
         return sample_neg_items
@@ -107,6 +108,10 @@ class DataLoaderBase(object):
 
     def generate_cf_batch(self, user_dict, batch_size):
         exist_users = user_dict.keys()
+        exist_items = []
+        for items in user_dict.values():
+            exist_items += list(items)
+
         if batch_size <= len(exist_users):
             batch_user = random.sample(exist_users, batch_size)
         else:
@@ -115,7 +120,7 @@ class DataLoaderBase(object):
         batch_pos_item, batch_neg_item = [], []
         for u in batch_user:
             batch_pos_item += self.sample_pos_items_for_u(user_dict, u, 1)
-            batch_neg_item += self.sample_neg_items_for_u(user_dict, u, 1)
+            batch_neg_item += self.sample_neg_items_for_u(user_dict, exist_items, u, 1)
 
         batch_user = torch.LongTensor(batch_user)
         batch_pos_item = torch.LongTensor(batch_pos_item)

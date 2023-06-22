@@ -68,7 +68,7 @@ class Aggregator(nn.Module):
 class KGAT(nn.Module):
 
     def __init__(self, args,
-                 n_users, n_entities, n_relations, A_in=None,
+                 n_users, n_entities, n_user_entities, n_relations, A_in=None,
                  user_pre_embed=None, item_pre_embed=None):
 
         super(KGAT, self).__init__()
@@ -77,6 +77,7 @@ class KGAT(nn.Module):
         self.n_users = n_users
         self.n_entities = n_entities
         self.n_relations = n_relations
+        self.n_user_entities = n_user_entities
 
         self.embed_dim = args.embed_dim
         self.relation_dim = args.relation_dim
@@ -89,7 +90,7 @@ class KGAT(nn.Module):
         self.kg_l2loss_lambda = args.kg_l2loss_lambda
         self.cf_l2loss_lambda = args.cf_l2loss_lambda
 
-        self.entity_user_embed = nn.Embedding(self.n_entities + self.n_users, self.embed_dim)
+        self.entity_user_embed = nn.Embedding(self.n_user_entities, self.embed_dim)
         self.relation_embed = nn.Embedding(self.n_relations, self.relation_dim)
         self.trans_M = nn.Parameter(torch.Tensor(self.n_relations, self.embed_dim, self.relation_dim))
 
@@ -108,7 +109,7 @@ class KGAT(nn.Module):
         for k in range(self.n_layers):
             self.aggregator_layers.append(Aggregator(self.conv_dim_list[k], self.conv_dim_list[k + 1], self.mess_dropout[k], self.aggregation_type))
 
-        self.A_in = nn.Parameter(torch.sparse.FloatTensor(self.n_users + self.n_entities, self.n_users + self.n_entities))
+        self.A_in = nn.Parameter(torch.sparse.FloatTensor(self.n_user_entities, self.n_user_entities))
         if A_in is not None:
             self.A_in.data = A_in
         self.A_in.requires_grad = False

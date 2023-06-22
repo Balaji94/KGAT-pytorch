@@ -95,7 +95,7 @@ class KGAT_wrapper:
 
         # construct model
         print("Constructing Model...")
-        model = KGAT(args, data.n_users, data.n_entities, data.n_relations, data.A_in, user_pre_embed, item_pre_embed)
+        model = KGAT(args, data.n_users, data.n_entities, data.n_users_entities, data.n_relations, data.A_in, user_pre_embed, item_pre_embed)
         if args.use_pretrain == 2:model = load_model(model, args.pretrain_model_path)
         model.to(self.device)
         logging.info(model)
