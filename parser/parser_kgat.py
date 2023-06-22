@@ -19,6 +19,9 @@ def parse_kgat_args():
     parser.add_argument('--pretrain_model_path', nargs='?', default='trained_model/model.pth',
                         help='Path of stored model.')
 
+    parser.add_argument('--epoch_model_path', nargs='?', default='trained_model/model_epoch.pth',
+                        help='Path of stored model.')
+
     parser.add_argument('--cf_batch_size', type=int, default=1024,
                         help='CF batch size.')
     parser.add_argument('--kg_batch_size', type=int, default=2048,
