@@ -245,7 +245,10 @@ class KGAT(nn.Module):
         pos_score = torch.sum(torch.pow(r_mul_h + r_embed - r_mul_pos_t, 2))
         kg_score = (-1.0) * F.logsigmoid(pos_score)
 
-        cf_score = self.calc_score([id1], [id2])
+        all_embed = self.calc_cf_embeddings()  # (n_users + n_entities, concat_dim)
+        user_embed = all_embed[[id1]]  # (n_users, concat_dim)
+        item_embed = all_embed[[id2]]
+        cf_score = F.cosine_similarity(user_embed, item_embed)
 
         score = f"KG Score : {kg_score}\nCF Score : {cf_score}"
 

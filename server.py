@@ -2,7 +2,7 @@ import logging
 import os
 
 import pandas as pd
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from parser.parser_kgat import *
 from kgat_wrapper import KGAT_wrapper
 from data_loader.loader_kgat import DataLoaderKGAT
@@ -13,18 +13,6 @@ kgat_wrapper = None
 lookup = pd.read_csv('./datasets/recruitment/lookup_table.csv')
 jobs = pd.read_csv('./datasets/recruitment/jobs.csv')
 candidates = pd.read_csv('./datasets/recruitment/candidates.csv')
-styled_html_table = """
-<style>
-    th, td {
-        padding: 8px;
-    }
-    th {
-        background-color: #f2f2f2;
-    }
-</style>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
-"""
 
 @app.route("/")
 def home():
@@ -48,42 +36,99 @@ def get_jobs():
 def get_candidates():
     return str(kgat_wrapper.data.items)
 
-@app.route("/rc/<jobid>", methods=['GET'])
-def rc(jobid):
+@app.route("/rc", methods=['GET','POST'])
+def recommend_candidates():
+    job_ids = kgat_wrapper.data.users
+    return render_template('html/candidate_recommendation.html', job_ids=job_ids)
+
+@app.route('/get_user_details', methods=['GET'])
+def get_user_details():
+    user_id = int(request.args.get('user_id'))
+    job_org_id = lookup[lookup['id'] == int(user_id)]['org_id'].iloc[0]
+    job_details = jobs[jobs['job_id'] == job_org_id].drop(columns=['job_id'])
+    user_details_html = job_details.to_html()
+    return jsonify(user_details_html)
+
+@app.route('/get_item_recommendations', methods=['GET'])
+def get_item_recommendations():
+    jobid = int(request.args.get('user_id'))
     top_k = 10
     cf_scores, metrics_dict, ids = kgat_wrapper.predict(job_id=jobid)
     zipped = zip(ids[1], cf_scores[0])
     sorted_ = sorted(zipped, key=lambda x: x[1], reverse=True)
     top_k_recommendations = dict(sorted_[:top_k])
-
-    job_org_id = lookup[lookup['id'] == int(jobid)]['org_id'].iloc[0]
-    job_details = jobs[jobs['job_id'] == job_org_id]
-
     top_candidate_ids = top_k_recommendations.keys()
     top_candidates_org_ids = lookup[lookup['id'].isin(top_candidate_ids)]['org_id']
     top_candidates_org_ids = [int(x) for x in top_candidates_org_ids]
-    candidates_details = candidates[candidates['Respondent'].isin(top_candidates_org_ids)]
-    res = styled_html_table
-    res += '<h3> Job Details </h3>'
-    res += job_details.to_html()
-    res += '<h3> Recommended candidates </h3>'
-    res += candidates_details.to_html()
-    return res
+    candidates_details = candidates[candidates['Respondent'].isin(top_candidates_org_ids)].drop(columns=['Respondent', 'LastJob1', 'LastJob2', 'LastJob3'])
+    # candidates_details['score'] = top_k_recommendations.values()
+    candidates_details_html = candidates_details.to_html()
+    return jsonify(candidates_details_html)
 
-@app.route("/rj/<candidateid>", methods=['GET'])
-def rj(candidateid):
+@app.route("/rj", methods=['GET','POST'])
+def recommend_jobs():
+    candidate_ids = kgat_wrapper.data.items
+    return render_template('html/job_recommendation.html', candidate_ids=candidate_ids)
+
+@app.route('/get_item_details', methods=['GET'])
+def get_item_details():
+    item_id = int(request.args.get('item_id'))
+    candidate_org_id = lookup[lookup['id'] == item_id]['org_id'].iloc[0]
+    candidate_details = candidates[candidates['Respondent'] == int(candidate_org_id)].drop(columns=['Respondent', 'LastJob1', 'LastJob2', 'LastJob3'])
+    item_details_html = candidate_details.to_html()
+    return jsonify(item_details_html)
+
+@app.route('/get_user_recommendations', methods=['GET'])
+def get_user_recommendations():
+    candidate_id = int(request.args.get('item_id'))
     top_k = 10
-    top_k_recommendations = []
-    cf_scores, metrics_dict, ids = kgat_wrapper.predict(candidate_id=candidateid)
+    cf_scores, metrics_dict, ids = kgat_wrapper.predict(candidate_id=candidate_id)
     zipped = zip(ids[1], cf_scores[0])
     sorted_ = sorted(zipped, key=lambda x: x[1], reverse=True)
     top_k_recommendations = dict(sorted_[:top_k])
-    return str(top_k_recommendations)
+    top_job_ids = top_k_recommendations.keys()
+    top_job_org_ids = lookup[lookup['id'].isin(top_job_ids)]['org_id']
+    job_details = jobs[jobs['job_id'].isin(top_job_org_ids)].drop(columns=['job_id'])
+    # job_details['score'] = top_k_recommendations.values()
+    user_details_html = job_details.to_html()
+    return jsonify(user_details_html)
 
 
-@app.route("/check_similarity", methods=['GET'])
-def check_similarity():
-    return render_template("html/compare_form.html")
+# @app.route("/rc/<jobid>", methods=['GET'])
+# def rc(jobid):
+#     top_k = 10
+#     cf_scores, metrics_dict, ids = kgat_wrapper.predict(job_id=jobid)
+#     zipped = zip(ids[1], cf_scores[0])
+#     sorted_ = sorted(zipped, key=lambda x: x[1], reverse=True)
+#     top_k_recommendations = dict(sorted_[:top_k])
+#
+#     job_org_id = lookup[lookup['id'] == int(jobid)]['org_id'].iloc[0]
+#     job_details = jobs[jobs['job_id'] == job_org_id]
+#
+#     top_candidate_ids = top_k_recommendations.keys()
+#     top_candidates_org_ids = lookup[lookup['id'].isin(top_candidate_ids)]['org_id']
+#     top_candidates_org_ids = [int(x) for x in top_candidates_org_ids]
+#     candidates_details = candidates[candidates['Respondent'].isin(top_candidates_org_ids)]
+#     res = '<h3> Job Details </h3>'
+#     res += job_details.to_html()
+#     res += '<h3> Recommended candidates </h3>'
+#     res += candidates_details.to_html()
+#     return res
+
+# @app.route("/rj/<candidateid>", methods=['GET'])
+# def rj(candidateid):
+#     top_k = 10
+#     top_k_recommendations = []
+#     cf_scores, metrics_dict, ids = kgat_wrapper.predict(candidate_id=candidateid)
+#     zipped = zip(ids[1], cf_scores[0])
+#     sorted_ = sorted(zipped, key=lambda x: x[1], reverse=True)
+#     top_k_recommendations = dict(sorted_[:top_k])
+#     return str(top_k_recommendations)
+
+
+# @app.route("/check_similarity", methods=['GET'])
+# def check_similarity():
+#     return render_template("html/compare_form.html")
 
 @app.route("/compare/<id1>/<r>/<id2>", methods=['GET'])
 def compare(id1, r, id2):
