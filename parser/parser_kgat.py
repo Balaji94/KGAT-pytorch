@@ -22,9 +22,9 @@ def parse_kgat_args():
     parser.add_argument('--epoch_model_path', nargs='?', default='trained_model/epochs_models/model_epoch{}.pth',
                         help='Path of stored model.')
 
-    parser.add_argument('--cf_batch_size', type=int, default=1024,
+    parser.add_argument('--cf_batch_size', type=int, default=100,
                         help='CF batch size.')
-    parser.add_argument('--kg_batch_size', type=int, default=2048,
+    parser.add_argument('--kg_batch_size', type=int, default=2064,
                         help='KG batch size.')
     parser.add_argument('--test_batch_size', type=int, default=10000,
                         help='Test batch size (the user number to test every batch).')
@@ -67,7 +67,7 @@ def parse_kgat_args():
     parser.add_argument('--evaluate_every', type=int, default=1,
                         help='Epoch interval of evaluating CF.')
 
-    parser.add_argument('--Ks', nargs='?', default='[20, 40, 60, 80, 100]',
+    parser.add_argument('--Ks', nargs='?', default='[10, 20, 40, 60, 80, 100]',
                         help='Calculate metric@K when evaluating.')
 
     parser.add_argument('--is_training', default='1',
